@@ -1,0 +1,95 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --color-primary: #2d6eff;
+  --color-primary-hover: #1a56db;
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f7f8fc;
+  --color-bg-hover: #f2f4f8;
+  --color-border: #e8ebf2;
+  --color-text-main: #1a1c23;
+  --color-text-secondary: #6b7280;
+  --color-text-placeholder: #a0a5b1;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+}
+
+/* 登录相关颜色 */
+:root {
+  --color-primary-light: rgba(45, 110, 255, 0.1);
+}
+
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-text-main);
+  font-size: 16px;
+}
+
+/* 滚动条样式 - 隐藏但保留滚动功能 */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+}
+
+/* Firefox 隐藏滚动条 */
+* {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+/* 鼠标悬停时显示滚动条（可选） */
+.chat-messages:hover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages:hover::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.chat-messages:hover::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* 全局过渡动画 */
+.router-enter-active,
+.router-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.router-enter-from,
+.router-leave-to {
+  opacity: 0;
+}

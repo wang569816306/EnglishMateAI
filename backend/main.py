@@ -10,6 +10,7 @@ from app.core.middlewares.exception_handler import (
     validation_exception_handler
 )
 from app.core.middlewares.request_size_limit import RequestSizeLimitMiddleware
+from app.core.database import init_db
 import uvicorn
 import sys
 
@@ -34,6 +35,10 @@ app = FastAPI(
     title=settings.SERVICE_NAME,
     version=settings.SERVICE_VERSION
 )
+
+# 初始化数据库
+init_db()
+print("✅ 数据库初始化完成")
 
 # 配置 CORS 跨域支持
 # 解析允许的源列表

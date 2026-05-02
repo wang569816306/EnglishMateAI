@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     # API Key 认证配置
     API_KEY_ENABLED: bool = os.getenv("API_KEY_ENABLED", "false").lower() == "true"
     API_KEYS: str = os.getenv("API_KEYS", "test-key-12345,admin-key-67890")
+    
+    # JWT 认证配置
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 1天 = 1440分钟
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    
+    # 数据库配置
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./english_mate.db")
 
 
 # 全局单例配置
