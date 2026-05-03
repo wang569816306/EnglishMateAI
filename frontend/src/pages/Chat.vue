@@ -103,8 +103,9 @@ const loadSuggestedQuestions = async () => {
   try {
     isLoadingQuestions.value = true
     const response = await apiClient.get('/suggested-questions/list')
-    if (response.data && Array.isArray(response.data)) {
-      suggestedQuestions.value = response.data.map((item: any) => item.question)
+    // 响应拦截器已经返回了 res.data，所以 response 就是数组
+    if (response && Array.isArray(response)) {
+      suggestedQuestions.value = response.map((item: any) => item.question)
       console.log('✅ 加载推荐问题成功:', suggestedQuestions.value.length, '条')
     }
   } catch (error) {
