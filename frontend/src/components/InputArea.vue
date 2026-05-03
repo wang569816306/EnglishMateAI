@@ -80,8 +80,7 @@ const autoResize = () => {
 <style scoped>
 .input-area {
   padding: 16px 24px 24px;
-  background: var(--color-bg);
-  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
 }
 
 .input-wrapper {

@@ -67,3 +67,36 @@ class SuggestedQuestion(Base):
 
     def __repr__(self):
         return f"<SuggestedQuestion(question='{self.question}')>"
+
+
+class Scenario(Base):
+    """场景库表 - 存储用户上传的文档场景"""
+    __tablename__ = "scenarios"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False, index=True, comment="用户ID")
+    title = Column(String(200), nullable=False, comment="场景标题")
+    content = Column(Text, nullable=False, comment="文档原始内容")
+    file_name = Column(String(200), nullable=True, comment="文件名")
+    file_type = Column(String(20), nullable=True, comment="文件类型: word/excel")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), comment="更新时间")
+
+    def __repr__(self):
+        return f"<Scenario(title='{self.title}', user_id={self.user_id})>"
+
+
+class Dialogue(Base):
+    """对话表 - 存储AI生成的双人对话"""
+    __tablename__ = "dialogues"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False, index=True, comment="用户ID")
+    scenario_id = Column(Integer, nullable=False, index=True, comment="场景ID")
+    title = Column(String(200), nullable=True, comment="对话标题")
+    dialogue_data = Column(Text, nullable=False, comment="对话内容JSON格式")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
+
+    def __repr__(self):
+        return f"<Dialogue(title='{self.title}', scenario_id={self.scenario_id})>"

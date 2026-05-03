@@ -3,18 +3,23 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
+    path: '/chat',
     name: 'Chat',
     component: () => import('@/pages/Chat.vue')
   },
   {
-    path: '/chat/:id?',
+    path: '/chat/:id',
     name: 'ChatDetail',
     component: () => import('@/pages/Chat.vue')
   },
   {
     path: '/ai-create',
     name: 'AICreate',
+    component: () => import('@/pages/AICreate.vue')
+  },
+  {
+    path: '/ai-create/:id',
+    name: 'AICreateDetail',
     component: () => import('@/pages/AICreate.vue')
   },
   {

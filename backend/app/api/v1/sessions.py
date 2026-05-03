@@ -161,6 +161,40 @@ async def get_session_messages(
     return ApiResponse(code=200, msg="成功", data=message_list)
 
 
+@router.put("/{session_id}")
+async def update_session(
+    session_id: str,
+    request_data: dict,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新会话（重命名）
+    """
+    session = db.query(SessionModel).filter(
+        SessionModel.session_id == session_id,
+        SessionModel.user_id == current_user["id"]
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在或无权访问")
+    
+    # 更新标题
+    if "title" in request_data:
+        session.title = request_data["title"]
+        db.commit()
+        db.refresh(session)
+    
+    return ApiResponse(
+        code=200,
+        msg="更新成功",
+        data={
+            "session_id": session.session_id,
+            "title": session.title
+        }
+    )
+
+
 @router.delete("/{session_id}")
 async def delete_session(
     session_id: str,

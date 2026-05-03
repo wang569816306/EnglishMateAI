@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { message } from 'ant-design-vue'
 
 // 创建axios实例
 const apiClient = axios.create({
@@ -35,7 +36,8 @@ apiClient.interceptors.response.use(
       return Promise.reject(new Error(res.msg || '请求失败'))
     }
     
-    return res
+    // ✅ 返回 data 字段，而不是整个响应对象
+    return res.data
   },
   (error) => {
     console.error('Request Error:', error.message)
@@ -47,9 +49,18 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user_info')
       
-      // 触发重新登录
+      // 使用antd提示
+      message.error('登录过期，请重新登录')
+      
+      // 触发重新登录事件
       window.dispatchEvent(new CustomEvent('auth-expired'))
+      
+      return Promise.reject(new Error('登录过期，请重新登录'))
     }
+    
+    // 其他错误提示
+    const errorMsg = error.response?.data?.msg || error.message || '请求失败'
+    message.error(errorMsg)
     
     return Promise.reject(error)
   }

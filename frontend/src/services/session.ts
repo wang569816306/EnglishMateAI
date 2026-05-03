@@ -25,7 +25,8 @@ export interface Message {
 export async function getSessionList(): Promise<Session[]> {
   try {
     const response = await apiClient.get('/sessions/list')
-    return response.data || []
+    console.log('getSessionList API响应:', response)
+    return response || []  // apiClient已经返回了data字段
   } catch (error) {
     console.error('获取会话列表失败:', error)
     throw error
@@ -40,7 +41,8 @@ export async function createSession(title?: string): Promise<Session> {
     const response = await apiClient.post('/sessions/create', {
       title: title || '新对话'
     })
-    return response.data
+    console.log('createSession API响应:', response)
+    return response  // apiClient已经返回了data字段
   } catch (error) {
     console.error('创建会话失败:', error)
     throw error
@@ -53,7 +55,8 @@ export async function createSession(title?: string): Promise<Session> {
 export async function getSessionMessages(sessionId: string): Promise<Message[]> {
   try {
     const response = await apiClient.get(`/sessions/${sessionId}/messages`)
-    return response.data || []
+    console.log('getSessionMessages API响应:', response)
+    return response || []  // apiClient已经返回了data字段
   } catch (error) {
     console.error('获取会话消息失败:', error)
     throw error
@@ -68,6 +71,18 @@ export async function deleteSession(sessionId: string): Promise<void> {
     await apiClient.delete(`/sessions/${sessionId}`)
   } catch (error) {
     console.error('删除会话失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 重命名会话
+ */
+export async function renameSession(sessionId: string, title: string): Promise<void> {
+  try {
+    await apiClient.put(`/sessions/${sessionId}`, { title })
+  } catch (error) {
+    console.error('重命名会话失败:', error)
     throw error
   }
 }
@@ -91,4 +106,66 @@ export function getCurrentSessionId(): string | null {
  */
 export function clearCurrentSessionId(): void {
   localStorage.removeItem('current_session_id')
+}
+
+// ==================== 口语训练对话API ====================
+
+export interface SpeakingDialogue {
+  id: number
+  title: string
+  scenario_id: number
+  dialogue_data: any[]
+  created_at: string
+}
+
+/**
+ * 获取口语训练对话列表
+ */
+export async function getSpeakingDialogueList(): Promise<SpeakingDialogue[]> {
+  try {
+    const response = await apiClient.get('/scenarios/dialogues')
+    console.log('getSpeakingDialogueList API响应:', response)
+    return response || []  // apiClient已经返回了data字段
+  } catch (error) {
+    console.error('获取口语训练对话列表失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 获取口语训练对话详情
+ */
+export async function getSpeakingDialogueDetail(dialogueId: number): Promise<SpeakingDialogue> {
+  try {
+    const response = await apiClient.get(`/scenarios/dialogues/${dialogueId}`)
+    console.log('getSpeakingDialogueDetail API响应:', response)
+    return response  // apiClient已经返回了data字段
+  } catch (error) {
+    console.error('获取口语训练对话详情失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 删除口语训练对话
+ */
+export async function deleteSpeakingDialogue(dialogueId: number): Promise<void> {
+  try {
+    await apiClient.delete(`/scenarios/dialogues/${dialogueId}`)
+  } catch (error) {
+    console.error('删除口语训练对话失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 重命名口语训练对话
+ */
+export async function renameSpeakingDialogue(dialogueId: number, title: string): Promise<void> {
+  try {
+    await apiClient.put(`/scenarios/dialogues/${dialogueId}`, { title })
+  } catch (error) {
+    console.error('重命名口语训练对话失败:', error)
+    throw error
+  }
 }

@@ -37,7 +37,7 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-  subtitle: '内容由豆包 AI 生成，请仔细甄别',
+  subtitle: '内容由千问 AI 生成，请仔细甄别',
   isLoggedIn: false
 })
 
@@ -51,7 +51,7 @@ defineEmits<{
 
 <style scoped>
 .top-bar {
-  height: 56px;
+  height: 69px;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   display: flex;

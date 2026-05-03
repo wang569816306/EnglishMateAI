@@ -37,10 +37,13 @@ onMounted(() => {
 const checkAuthStatus = () => {
   if (isAuthenticated()) {
     const userInfo = getCachedUserInfo()
-    if (userInfo) {
+    if (userInfo && userInfo.username) {
       isLoggedIn.value = true
       currentUser.value = { username: userInfo.username }
       console.log('User logged in:', userInfo.username)
+    } else {
+      console.warn('用户信息不完整，清除认证状态')
+      clearAuth()
     }
   }
 }
@@ -49,7 +52,8 @@ const handleAuthExpired = () => {
   console.log('Auth token expired')
   isLoggedIn.value = false
   currentUser.value = null
-  alert('登录已过期，请重新登录')
+  // 弹出登录框
+  showAuthModal.value = true
 }
 
 // 处理新会话创建
@@ -67,12 +71,12 @@ const handleSessionCreated = (event: any) => {
 const pageTitle = computed(() => {
   const path = currentRoute.value.path
   if (path === '/' || path.startsWith('/chat')) {
-    // 如果有session_id参数，显示“历史对话”，否则显示“新对话”
+    // 如果有session_id参数，显示"历史对话",否则显示"新对话"
     const hasSessionId = path.startsWith('/chat/') && path.length > 6
     return hasSessionId ? '历史对话' : '新对话'
   }
-  if (path === '/ai-create') return 'AI 创作'
-  if (path === '/cloud') return '云盘'
+  if (path === '/ai-create' || path.startsWith('/ai-create/')) return '口语训练'
+  if (path === '/cloud') return '万能视频下载'
   return '新对话'
 })
 
@@ -123,15 +127,25 @@ const handleLogout = async () => {
 
 const handleLogin = (user: any) => {
   console.log('Login success:', user)
-  isLoggedIn.value = true
-  currentUser.value = { username: user.username }
+  if (user && user.username) {
+    isLoggedIn.value = true
+    currentUser.value = { username: user.username }
+  } else {
+    console.error('登录响应中缺少用户信息', user)
+    message.error('登录失败：用户信息不完整')
+  }
 }
 
 const handleRegister = (user: any) => {
   console.log('Register success:', user)
-  // 注册成功后自动登录
-  isLoggedIn.value = true
-  currentUser.value = { username: user.username }
+  if (user && user.username) {
+    // 注册成功后自动登录
+    isLoggedIn.value = true
+    currentUser.value = { username: user.username }
+  } else {
+    console.error('注册响应中缺少用户信息', user)
+    message.error('注册失败：用户信息不完整')
+  }
 }
 
 const handleSend = async (message: string) => {
@@ -174,10 +188,17 @@ const handleLoadSession = (sessionId: string) => {
 // 创建新对话
 const handleNewChat = () => {
   console.log('创建新对话')
-  // 清除当前会话ID
-  localStorage.removeItem('current_session_id')
-  // 导航到新对话页面（不带session_id）
-  router.push('/')
+  // 导航到新对话页面
+  router.push('/chat')
+}
+
+// 加载口语训练历史
+const handleLoadSpeakingHistory = (dialogueId: string) => {
+  console.log('加载口语训练对话:', dialogueId)
+  // 触发事件，让AICreate页面加载对话
+  window.dispatchEvent(new CustomEvent('load-speaking-dialogue', { 
+    detail: { dialogueId } 
+  }))
 }
 </script>
 
@@ -192,6 +213,7 @@ const handleNewChat = () => {
       @logout="handleLogout"
       @load-session="handleLoadSession"
       @new-chat="handleNewChat"
+      @load-speaking-history="handleLoadSpeakingHistory"
     />
     <div class="main-content" :class="{ 'main-with-sidebar': isSidebarOpen }">
       <TopBar 

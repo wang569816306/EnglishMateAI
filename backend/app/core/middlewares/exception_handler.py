@@ -11,6 +11,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     处理HTTP异常（404, 405等）
     """
     return JSONResponse(
+        status_code=exc.status_code,  # 设置正确的HTTP状态码
         content=ApiResponse(
             code=exc.status_code,
             msg=exc.detail,
@@ -39,6 +40,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     # 1. 自定义业务异常
     if isinstance(exc, APIException):
         return JSONResponse(
+            status_code=exc.code,  # 设置正确的HTTP状态码
             content=ApiResponse(
                 code=exc.code,
                 msg=exc.msg,
@@ -49,6 +51,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     # 2. 服务器异常
     else:
         return JSONResponse(
+            status_code=500,  # 设置正确的HTTP状态码
             content=ApiResponse(
                 code=500,
                 msg=f"服务器内部错误: {str(exc)}",

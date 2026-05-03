@@ -44,7 +44,7 @@ export const register = async (data: RegisterData): Promise<AuthResponse> => {
     password: data.password,
     full_name: data.full_name || data.username // 如果没有提供full_name，使用username
   })
-  return response.data
+  return response // 响应拦截器已经返回了 response.data
 }
 
 /**
@@ -55,7 +55,7 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
     username: data.username,
     password: data.password
   })
-  return response.data
+  return response // 响应拦截器已经返回了 response.data
 }
 
 /**
@@ -63,7 +63,7 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
  */
 export const getCurrentUser = async (): Promise<UserInfo> => {
   const response = await apiClient.get('/auth/me')
-  return response.data
+  return response // 响应拦截器已经返回了 response.data
 }
 
 /**
@@ -73,7 +73,7 @@ export const refreshToken = async (refreshToken: string): Promise<{access_token:
   const response = await apiClient.post('/auth/refresh', {
     refresh_token: refreshToken
   })
-  return response.data
+  return response // 响应拦截器已经返回了 response.data
 }
 
 /**
@@ -102,31 +102,53 @@ export const logout = async (): Promise<void> => {
  * 保存认证信息到localStorage
  */
 export const saveAuth = (authData: AuthResponse) => {
-  localStorage.setItem('access_token', authData.access_token)
-  localStorage.setItem('refresh_token', authData.refresh_token)
-  localStorage.setItem('user_info', JSON.stringify(authData.user))
+  try {
+    localStorage.setItem('access_token', authData.access_token)
+    localStorage.setItem('refresh_token', authData.refresh_token)
+    localStorage.setItem('user_info', JSON.stringify(authData.user))
+    console.log('认证信息保存成功')
+  } catch (error) {
+    console.error('保存认证信息失败:', error)
+    // 在微信浏览器等环境中，localStorage可能不可用
+    throw new Error('无法保存登录状态，请检查浏览器设置')
+  }
 }
 
 /**
  * 清除认证信息
  */
 export const clearAuth = () => {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('refresh_token')
-  localStorage.removeItem('user_info')
+  try {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user_info')
+    console.log('认证信息已清除')
+  } catch (error) {
+    console.error('清除认证信息失败:', error)
+  }
 }
 
 /**
  * 获取当前用户信息（从localStorage）
  */
 export const getCachedUserInfo = (): UserInfo | null => {
-  const userInfo = localStorage.getItem('user_info')
-  return userInfo ? JSON.parse(userInfo) : null
+  try {
+    const userInfo = localStorage.getItem('user_info')
+    return userInfo ? JSON.parse(userInfo) : null
+  } catch (error) {
+    console.error('读取用户信息失败:', error)
+    return null
+  }
 }
 
 /**
  * 检查是否已登录
  */
 export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('access_token')
+  try {
+    return !!localStorage.getItem('access_token')
+  } catch (error) {
+    console.error('检查登录状态失败:', error)
+    return false
+  }
 }

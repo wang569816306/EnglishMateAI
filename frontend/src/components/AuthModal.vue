@@ -190,10 +190,15 @@ const handleLogin = async () => {
   errorMessage.value = ''
   
   try {
+    console.log('开始登录...', loginForm.username)
     const response = await loginAPI({
       username: loginForm.username,
       password: loginForm.password
     })
+    
+    console.log('登录响应:', response)
+    console.log('response.user:', response?.user)
+    console.log('response.access_token:', response?.access_token ? '存在' : '不存在')
     
     // 保存认证信息
     saveAuth(response)
@@ -204,15 +209,39 @@ const handleLogin = async () => {
     }
     
     console.log('Login success:', response)
-    emit('login', response.user)
-    handleClose()
-    
-    // 显示成功提示
-    message.success('登录成功！')
+    // 确保 user 存在再 emit
+    if (response && response.user) {
+      emit('login', response.user)
+      handleClose()
+      // 显示成功提示
+      message.success('登录成功！')
+    } else {
+      console.error('登录响应格式错误:', response)
+      message.error('登录失败：服务器响应格式错误')
+    }
   } catch (error: any) {
     console.error('Login failed:', error)
-    errorMessage.value = error.message || '登录失败，请检查用户名和密码'
-    message.error(errorMessage.value)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response,
+      stack: error.stack
+    })
+    
+    // 针对不同错误类型给出更友好的提示
+    let errorMsg = '登录失败，请检查用户名和密码'
+    
+    if (error.message?.includes('Network Error')) {
+      errorMsg = '网络连接失败，请检查网络后重试'
+    } else if (error.message?.includes('401')) {
+      errorMsg = '用户名或密码错误'
+    } else if (error.message?.includes('timeout')) {
+      errorMsg = '请求超时，请检查网络连接'
+    } else if (error.message) {
+      errorMsg = error.message
+    }
+    
+    errorMessage.value = errorMsg
+    message.error(errorMsg)
   } finally {
     isSubmitting.value = false
   }
@@ -241,6 +270,7 @@ const handleRegister = async () => {
   errorMessage.value = ''
   
   try {
+    console.log('开始注册...', registerForm.username)
     const response = await registerAPI({
       username: registerForm.username,
       email: registerForm.email,
@@ -248,19 +278,51 @@ const handleRegister = async () => {
       full_name: registerForm.username // 使用用户名作为full_name
     })
     
+    console.log('注册响应:', response)
+    console.log('response.user:', response?.user)
+    console.log('response.access_token:', response?.access_token ? '存在' : '不存在')
+    
     // 保存认证信息
     saveAuth(response)
     
     console.log('Register success:', response)
-    emit('register', response.user)
-    handleClose()
-    
-    // 显示成功提示
-    message.success('注册成功！')
+    // 确保 user 存在再 emit
+    if (response && response.user) {
+      emit('register', response.user)
+      handleClose()
+      // 显示成功提示
+      message.success('注册成功！')
+    } else {
+      console.error('注册响应格式错误:', response)
+      message.error('注册失败：服务器响应格式错误')
+    }
   } catch (error: any) {
     console.error('Register failed:', error)
-    errorMessage.value = error.message || '注册失败，请稍后重试'
-    message.error(errorMessage.value)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response,
+      stack: error.stack
+    })
+    
+    // 针对不同错误类型给出更友好的提示
+    let errorMsg = '注册失败，请稍后重试'
+    
+    if (error.message?.includes('Network Error')) {
+      errorMsg = '网络连接失败，请检查网络后重试'
+    } else if (error.message?.includes('400')) {
+      if (error.message?.includes('用户名')) {
+        errorMsg = '用户名已被注册'
+      } else if (error.message?.includes('邮箱')) {
+        errorMsg = '邮箱已被注册'
+      }
+    } else if (error.message?.includes('timeout')) {
+      errorMsg = '请求超时，请检查网络连接'
+    } else if (error.message) {
+      errorMsg = error.message
+    }
+    
+    errorMessage.value = errorMsg
+    message.error(errorMsg)
   } finally {
     isSubmitting.value = false
   }
