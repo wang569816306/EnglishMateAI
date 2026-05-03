@@ -76,7 +76,7 @@ const pageTitle = computed(() => {
     return hasSessionId ? '历史对话' : '新对话'
   }
   if (path === '/ai-create' || path.startsWith('/ai-create/')) return '口语训练'
-  if (path === '/cloud') return '万能视频下载'
+  if (path === '/cloud') return '视频下载'
   return '新对话'
 })
 
