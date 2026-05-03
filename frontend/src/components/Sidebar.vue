@@ -52,13 +52,13 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="section-title">{{ isSpeakingPage ? '口语训练历史' : '历史对话' }}</div>
+      <div class="section-title">{{ isSpeakingPage ? '口语训练历史' : isCloudPage ? '下载历史' : '历史对话' }}</div>
       <div class="history-list">
         <div v-if="isLoadingSessions" class="loading-sessions">
           <span>加载中...</span>
         </div>
         <div v-else-if="historyList.length === 0" class="empty-sessions">
-          <span>{{ isSpeakingPage ? '暂无口语训练记录' : '暂无历史对话' }}</span>
+          <span>{{ isSpeakingPage ? '暂无口语训练记录' : isCloudPage ? '暂无下载历史' : '暂无历史对话' }}</span>
         </div>
         <div 
           v-else
@@ -244,6 +244,9 @@ const route = useRoute()
 // 判断当前是否在口语训练页面（包括 /ai-create 和 /ai-create/:id）
 const isSpeakingPage = computed(() => route.path === '/ai-create' || route.path.startsWith('/ai-create/'))
 
+// 判断当前是否在视频下载页面
+const isCloudPage = computed(() => route.path === '/cloud')
+
 // 判断当前是否在chat页面（包括新对话和历史对话）
 const isActiveChatRoute = computed(() => {
   return route.path === '/chat' || route.path.startsWith('/chat/')
@@ -339,6 +342,13 @@ const loadSessions = async () => {
         created_at: d.created_at
       }))
       console.log('✅ 历史列表已更新，共', historyList.value.length, '条记录')
+    } else if (isCloudPage.value) {
+      // 视频下载页面，加载下载历史
+      console.log('📥 视频下载页面，加载下载历史...')
+      // TODO: 后续接入视频下载历史 API
+      // 暂时显示空列表
+      historyList.value = []
+      console.log('✅ 下载历史列表已清空')
     } else {
       // AI英语助手页面，加载会话历史
       console.log('📞 调用 getSessionList API...')
@@ -386,6 +396,10 @@ const handleHistoryItemClick = (item: HistoryItem) => {
     // 口语训练页面，触发加载对话事件
     // 使用id作为dialogueId
     emit('load-speaking-history', String(item.id))
+  } else if (isCloudPage.value) {
+    // 视频下载页面， TODO: 后续接入下载历史点击逻辑
+    console.log('📥 点击下载历史:', item.title)
+    message.info('下载历史功能开发中')
   } else {
     // AI英语助手页面，加载会话
     if (item.session_id) {

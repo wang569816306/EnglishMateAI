@@ -352,7 +352,7 @@
             <a-select 
               v-model:value="lineTranslationModes[index]" 
               size="small"
-              style="width: 120px;"
+              style="textAlign:center;"
             >
               <a-select-option value="default">默认</a-select-option>
               <a-select-option value="both">中英对照</a-select-option>
@@ -2067,6 +2067,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+:deep(.ant-select-selection-item),
+:deep(.ant-select-selection-placeholder) {
+  padding-inline-end: 0px !important;
+}
 .speaking-container {
   flex: 1;
   display: flex;
@@ -2824,25 +2828,42 @@ onUnmounted(() => {
   }
 
   .dialogue-controls {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
     width: 100%;
   }
 
+  /* 翻译模式和角色语音开关占一行 */
+  .global-translation-mode,
+  .role-voice-toggle {
+    flex: 0 0 auto;
+  }
+
+  /* 声音选择器和下拉框占一行 */
   .voice-selector {
-    flex-direction: column;
-    align-items: stretch;
+    flex: 1 1 100%;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
     width: 100%;
   }
 
   .voice-select {
-    width: 100% !important;
+    flex: 1;
+    width: auto !important;
   }
 
   .selector-label {
     font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* 连读开关独占一行 */
+  .continuous-play-toggle {
+    flex: 1 1 100%;
+    width: 100%;
   }
 
   .dialogue-controls .ant-btn {
