@@ -9,6 +9,8 @@ from .documents import router as documents_router
 from .scenarios import router as scenarios_router
 from .tts import router as tts_router
 from .pronunciation import router as pronunciation_router
+from .videos import router as videos_router
+from .summaries import router as summaries_router
 from app.core.middlewares.response_middleware import UniformResponse
 
 api_router = APIRouter(
@@ -28,3 +30,5 @@ api_router.include_router(documents_router)  # 文档管理路由
 api_router.include_router(scenarios_router)  # 场景管理路由
 api_router.include_router(tts_router)  # TTS 语音合成路由
 api_router.include_router(pronunciation_router, prefix="/pronunciation")  # 发音评分路由
+api_router.include_router(videos_router, prefix="/videos")  # 视频下载路由
+api_router.include_router(summaries_router, prefix="/summaries")  # AI总结路由

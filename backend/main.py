@@ -40,16 +40,14 @@ app = FastAPI(
 init_db()
 print("✅ 数据库初始化完成")
 
-# 配置 CORS 跨域支持
-# 解析允许的源列表
-cors_origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"]
-
+# 配置 CORS 跨域支持 - 允许所有来源
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,  # 允许的源域名列表
+    allow_origins=["*"],  # 允许所有源（开发环境）
     allow_credentials=True,  # 允许携带认证信息（cookies、authorization headers等）
-    allow_methods=["*"],  # 允许所有 HTTP 方法（GET、POST、PUT、DELETE等）
+    allow_methods=["*"],  # 允许所有 HTTP 方法（GET、POST、PUT、DELETE、OPTIONS等）
     allow_headers=["*"],  # 允许所有请求头
+    expose_headers=["*"],  # 暴露所有响应头
 )
 
 # 添加请求体大小限制中间件

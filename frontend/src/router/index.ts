@@ -3,6 +3,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/',
+    redirect: '/chat'
+  },
+  {
     path: '/chat',
     name: 'Chat',
     component: () => import('@/pages/Chat.vue')
@@ -11,6 +15,11 @@ const routes: RouteRecordRaw[] = [
     path: '/chat/:id',
     name: 'ChatDetail',
     component: () => import('@/pages/Chat.vue')
+  },
+  {
+    path: '/video-download',
+    name: 'VideoDownload',
+    component: () => import('@/pages/VideoDownload.vue')
   },
   {
     path: '/ai-create',

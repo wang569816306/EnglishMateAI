@@ -43,22 +43,24 @@
         <span>口语训练</span>
       </router-link>
 
-      <router-link to="/cloud" class="nav-item" active-class="active" @click="handleNavClick">
+      <router-link to="/video-download" class="nav-item" active-class="active" @click="handleNavClick">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         <span>视频下载</span>
       </router-link>
     </div>
 
     <div class="sidebar-section">
-      <div class="section-title">{{ isSpeakingPage ? '口语训练历史' : isCloudPage ? '下载历史' : '历史对话' }}</div>
+      <div class="section-title">{{ isSpeakingPage ? '口语训练历史' : isCloudPage ? '' : '历史对话' }}</div>
       <div class="history-list">
         <div v-if="isLoadingSessions" class="loading-sessions">
           <span>加载中...</span>
         </div>
         <div v-else-if="historyList.length === 0" class="empty-sessions">
-          <span>{{ isSpeakingPage ? '暂无口语训练记录' : isCloudPage ? '暂无下载历史' : '暂无历史对话' }}</span>
+          <span>{{ isSpeakingPage ? '暂无口语训练记录' : isCloudPage ? '' : '暂无历史对话' }}</span>
         </div>
         <div 
           v-else
@@ -245,7 +247,7 @@ const route = useRoute()
 const isSpeakingPage = computed(() => route.path === '/ai-create' || route.path.startsWith('/ai-create/'))
 
 // 判断当前是否在视频下载页面
-const isCloudPage = computed(() => route.path === '/cloud')
+const isCloudPage = computed(() => route.path === '/video-download')
 
 // 判断当前是否在chat页面（包括新对话和历史对话）
 const isActiveChatRoute = computed(() => {
@@ -346,7 +348,7 @@ const loadSessions = async () => {
       // 视频下载页面，加载下载历史
       console.log('📥 视频下载页面，加载下载历史...')
       // TODO: 后续接入视频下载历史 API
-      // 暂时显示空列表
+      // 暂时显示空列表，由VideoDownload页面自己管理
       historyList.value = []
       console.log('✅ 下载历史列表已清空')
     } else {
@@ -565,7 +567,6 @@ onBeforeUnmount(() => {
   position: fixed;
   left: 0;
   top: 0;
-  overflow-y: auto;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
 }
@@ -635,6 +636,7 @@ onBeforeUnmount(() => {
 
 .sidebar-nav {
   padding: 12px;
+  flex-shrink: 0;
 }
 
 .nav-item {
@@ -672,6 +674,8 @@ onBeforeUnmount(() => {
 .sidebar-section {
   padding: 12px;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .section-title {
@@ -812,6 +816,7 @@ onBeforeUnmount(() => {
   padding: 16px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
+  flex-shrink: 0;
 }
 
 .login-prompt {
