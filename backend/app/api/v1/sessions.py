@@ -47,12 +47,12 @@ async def get_session_list(
     获取当前用户的历史会话列表
     
     Returns:
-        会话列表，按更新时间倒序排列
+        会话列表，按ID倒序排列（最新的在前）
     """
     sessions = db.query(SessionModel).filter(
         SessionModel.user_id == current_user["id"]
     ).order_by(
-        SessionModel.updated_at.desc()
+        SessionModel.id.desc()
     ).all()
     
     # 转换为字典列表

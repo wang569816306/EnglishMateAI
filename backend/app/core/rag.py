@@ -3,7 +3,7 @@ import warnings
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader, Docx2txtLoader
 
 # 忽略 ChromaDB 的遥测警告
 warnings.filterwarnings("ignore", category=UserWarning, module="chromadb")
@@ -33,20 +33,38 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def init_rag():
     try:
         emb = get_embedding()  # 获取 embedding 模型
-        knowledge_path = os.path.join(BASE_DIR, "rag", "english_knowledge.txt")
         
-        # 检查文件是否存在
-        if not os.path.exists(knowledge_path):
+        # 加载所有知识库文档
+        all_docs = []
+        
+        # 1. 加载英文知识文本文件
+        knowledge_path = os.path.join(BASE_DIR, "rag", "english_knowledge.txt")
+        if os.path.exists(knowledge_path):
+            loader = TextLoader(knowledge_path, encoding="utf-8")
+            docs = loader.load()
+            all_docs.extend(docs)
+            print(f"已加载 english_knowledge.txt: {len(docs)} 个文档")
+        else:
             print(f"警告: 知识库文件不存在: {knowledge_path}")
+        
+        # 2. 加载新概念英语 Word 文档
+        new_concept_path = os.path.join(BASE_DIR, "rag", "new_concept.docx")
+        if os.path.exists(new_concept_path):
+            loader = Docx2txtLoader(new_concept_path)
+            docs = loader.load()
+            all_docs.extend(docs)
+            print(f"已加载 new_concept.docx: {len(docs)} 个文档")
+        else:
+            print(f"警告: 知识库文件不存在: {new_concept_path}")
+        
+        # 检查是否有文档被加载
+        if not all_docs:
+            print("警告: 没有加载任何知识库文档")
             return None
         
-        # 加载文档
-        loader = TextLoader(knowledge_path, encoding="utf-8")
-        docs = loader.load()
-
-        # 切分
+        # 切分文档
         splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=50)
-        splits = splitter.split_documents(docs)
+        splits = splitter.split_documents(all_docs)
 
         # 存入向量库（首次创建，不使用旧的序列化数据）
         db = Chroma.from_documents(

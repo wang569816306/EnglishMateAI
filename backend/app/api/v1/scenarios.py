@@ -327,7 +327,7 @@ async def get_dialogue_list(
     if scenario_id:
         query = query.filter(DialogueModel.scenario_id == scenario_id)
     
-    dialogues = query.order_by(DialogueModel.created_at.desc()).all()
+    dialogues = query.order_by(DialogueModel.id.desc()).all()
     
     dialogue_list = [
         {
