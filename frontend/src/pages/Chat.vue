@@ -83,6 +83,7 @@ const messagesContainer = ref<HTMLElement | null>(null)
 const sessionId = ref('')
 const route = useRoute()
 const router = useRouter()
+const isStreaming = ref(false)  // 标记是否正在流式传输
 
 // 获取全局的 sendMessage 方法
 const chatSendMessage = inject<Ref<((message: string) => Promise<void>) | null>>('chatSendMessage')
@@ -149,6 +150,7 @@ const sendMessage = async (content: string) => {
   if (!content.trim()) return
   
   console.log(' 开始发送消息:', content)
+  isStreaming.value = true  // 标记开始流式传输
   
   // 添加用户消息
   messages.value.push({
@@ -157,12 +159,12 @@ const sendMessage = async (content: string) => {
   })
   
   // 添加AI消息占位
-  const aiMessageIndex = messages.value.length
   messages.value.push({
     content: '',
     isUser: false,
     isStreaming: true
   })
+  const aiMessageIndex = messages.value.length - 1
   
   await scrollToBottom()
   
@@ -208,11 +210,11 @@ const sendMessage = async (content: string) => {
     
     // 从响应头获取session_id（如果是新创建的会话）
     const newSessionId = response.headers.get('X-Session-Id')
-    if (newSessionId && !sessionId.value) {
+    const isNewSession = newSessionId && !sessionId.value
+    if (isNewSession) {
       sessionId.value = newSessionId
       saveCurrentSessionId(sessionId.value)
-      // 更新路由
-      await router.push(`/chat/${sessionId.value}`)
+      // 先不更新路由，等流式传输完成后再更新
       // 通知父组件刷新会话列表
       window.dispatchEvent(new CustomEvent('session-created', { detail: { sessionId: sessionId.value } }))
     }
@@ -225,6 +227,10 @@ const sendMessage = async (content: string) => {
     const decoder = new TextDecoder()
     let accumulatedContent = ''
     let suggestedQuestions: string[] = []
+    
+    console.log('📡 开始接收流式数据...')
+    console.log('🎯 AI消息索引:', aiMessageIndex)
+    console.log(' 当前消息数组长度:', messages.value.length)
     
     while (true) {
       const { done, value } = await reader.read()
@@ -253,27 +259,55 @@ const sendMessage = async (content: string) => {
             }
           } else if (data && data !== '[DONE]') {
             accumulatedContent += data
-            messages.value[aiMessageIndex].content = accumulatedContent
-            await scrollToBottom()
+            console.log('📝 接收到数据片段:', data.substring(0, 50))
+            console.log('📝 累积内容长度:', accumulatedContent.length)
+            // 确保索引有效
+            if (messages.value[aiMessageIndex]) {
+              messages.value[aiMessageIndex].content = accumulatedContent
+              console.log('✅ 已更新消息内容，当前长度:', messages.value[aiMessageIndex].content.length)
+              await scrollToBottom()
+            } else {
+              console.error('❌ 消息索引无效！aiMessageIndex:', aiMessageIndex, '数组长度:', messages.value.length)
+            }
           }
         }
       }
     }
     
     // 流式传输完成
-    messages.value[aiMessageIndex].isStreaming = false
-    
-    // 设置推荐问题
-    if (suggestedQuestions.length > 0) {
-      messages.value[aiMessageIndex].suggestedQuestions = suggestedQuestions
+    console.log('✅ 流式传输完成，最终内容长度:', accumulatedContent.length)
+    if (messages.value[aiMessageIndex]) {
+      messages.value[aiMessageIndex].isStreaming = false
+      console.log('✅ 已设置 isStreaming = false')
+      
+      // 设置推荐问题
+      if (suggestedQuestions.length > 0) {
+        messages.value[aiMessageIndex].suggestedQuestions = suggestedQuestions
+        console.log('✅ 已设置推荐问题:', suggestedQuestions)
+      }
+    } else {
+      console.error('❌ 流式传输完成后，消息索引无效！')
     }
     
     console.log('✅ 消息处理完成')
+    isStreaming.value = false  // 标记流式传输完成
+    
+    // 如果是新会话，在流式传输完成后更新路由并加载历史消息
+    if (isNewSession && sessionId.value) {
+      console.log('🔄 新会话创建完成，更新路由并加载历史消息')
+      await router.push(`/chat/${sessionId.value}`)
+      // 加载完整的历史消息（包括刚刚保存的AI回复）
+      await loadHistoryMessages(sessionId.value)
+    }
     
   } catch (error: any) {
     console.error('❌ 发送消息失败:', error)
-    messages.value[aiMessageIndex].content = '抱歉,发生了错误,请稍后重试。'
-    messages.value[aiMessageIndex].isStreaming = false
+    isStreaming.value = false  // 标记流式传输完成
+    // 确保 aiMessageIndex 存在且有效
+    if (aiMessageIndex !== undefined && messages.value[aiMessageIndex]) {
+      messages.value[aiMessageIndex].content = '抱歉,发生了错误,请稍后重试。'
+      messages.value[aiMessageIndex].isStreaming = false
+    }
   }
 }
 
@@ -344,6 +378,12 @@ const initSession = async () => {
 // 监听路由变化
 watch(() => route.params.id, async (newId, oldId) => {
   console.log('路由变化: oldId=', oldId, 'newId=', newId)
+  
+  // 如果正在流式传输，不要加载历史消息（避免覆盖当前消息）
+  if (isStreaming.value) {
+    console.log('⚠️ 正在流式传输中，跳过历史消息加载')
+    return
+  }
   
   if (newId) {
     // 切换到有session_id的路由，加载历史消息
