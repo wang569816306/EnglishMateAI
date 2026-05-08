@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     
     # 数据库配置
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./english_mate.db")
+    
+    # 视频下载配置
+    MAX_DOWNLOAD_DIR_SIZE_GB: float = float(os.getenv("MAX_DOWNLOAD_DIR_SIZE_GB", "10"))  # 下载目录最大大小（GB）
+    DOWNLOAD_FILE_EXPIRE_HOURS: int = int(os.getenv("DOWNLOAD_FILE_EXPIRE_HOURS", "24"))  # 文件过期时间（小时）
+    MAX_CONCURRENT_DOWNLOADS: int = int(os.getenv("MAX_CONCURRENT_DOWNLOADS", "3"))  # 最大并发下载数
+    DOWNLOAD_RATE_LIMIT_PER_MINUTE: int = int(os.getenv("DOWNLOAD_RATE_LIMIT_PER_MINUTE", "10"))  # 每分钟最大下载次数
 
 
 # 全局单例配置

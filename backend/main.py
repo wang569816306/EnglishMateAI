@@ -11,8 +11,10 @@ from app.core.middlewares.exception_handler import (
 )
 from app.core.middlewares.request_size_limit import RequestSizeLimitMiddleware
 from app.core.database import init_db
+from app.services.download_manager import download_manager
 import uvicorn
 import sys
+import asyncio
 
 def print_banner():
     """打印启动横幅"""
@@ -40,6 +42,19 @@ app = FastAPI(
 init_db()
 print("✅ 数据库初始化完成")
 
+# 初始化下载管理器并执行启动时清理
+print("🧹 检查下载目录...")
+storage_stats = download_manager.get_storage_stats()
+print(f"📊 当前存储: {storage_stats['total_size_mb']:.2f}MB / {storage_stats['max_size_gb']}GB "
+      f"({storage_stats['usage_percent']:.1f}%), 文件数: {storage_stats['file_count']}")
+
+# 如果超过80%，自动清理
+if storage_stats['usage_percent'] > 80:
+    print("⚠️  存储空间使用率较高，执行自动清理...")
+    cleanup_result = download_manager.auto_cleanup()
+    print(f"✅ 清理完成: {cleanup_result['time_based_cleanup']['cleaned_count']} 个文件, "
+          f"{cleanup_result['time_based_cleanup']['cleaned_size_mb']:.2f}MB")
+
 # 配置 CORS 跨域支持 - 允许所有来源
 app.add_middleware(
     CORSMiddleware,
@@ -60,6 +75,27 @@ app.include_router(api_router)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # 404, 405等
 app.add_exception_handler(RequestValidationError, validation_exception_handler)  # 参数验证
 app.add_exception_handler(Exception, global_exception_handler)  # 其他所有异常
+
+
+@app.on_event("startup")
+async def startup_event():
+    """启动时执行的任务"""
+    # 启动后台定时清理任务
+    asyncio.create_task(scheduled_cleanup())
+
+
+async def scheduled_cleanup():
+    """
+    定时清理任务 - 每6小时执行一次
+    """
+    while True:
+        await asyncio.sleep(6 * 3600)  # 6小时
+        try:
+            print("🧹 执行定时清理任务...")
+            result = download_manager.auto_cleanup()
+            print(f"✅ 定时清理完成: {result['time_based_cleanup']['cleaned_count']} 个文件")
+        except Exception as e:
+            print(f"❌ 定时清理失败: {e}")
 
 if __name__ == "__main__":
     print_banner()

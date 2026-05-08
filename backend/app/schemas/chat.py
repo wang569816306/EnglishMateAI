@@ -13,6 +13,10 @@ class ChatRequest(BaseModel):
         "default",
         description="会话ID，用于多轮对话记忆。不传则使用默认值"
     )
+    use_tools: bool = Field(
+        False,
+        description="是否启用 Tool Calling（工具调用），默认关闭"
+    )
 
 class ChatResponse(BaseModel):
     status: str

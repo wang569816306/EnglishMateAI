@@ -2,12 +2,13 @@
 视频下载API路由
 提供视频解析、下载、直链获取等功能
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 from typing import Optional
 import os
 import shutil
 from app.services.video_downloader import VideoDownloader
+from app.services.download_manager import download_manager
 
 router = APIRouter(tags=["视频下载"])
 
@@ -58,21 +59,51 @@ async def parse_video(request: VideoParseRequest):
 
 
 @router.post("/download")
-async def download_video(request: VideoDownloadRequest, background_tasks: BackgroundTasks):
+async def download_video(request: VideoDownloadRequest, background_tasks: BackgroundTasks, http_request: Request):
     """
     下载视频到服务器
     返回文件路径，前端可通过/file接口下载
     """
     try:
+        # 获取用户IP
+        user_ip = http_request.client.host if http_request.client else "unknown"
+        
+        # 检查频率限制
+        if not download_manager.check_rate_limit(user_ip):
+            remaining = download_manager.get_rate_limit_remaining(user_ip)
+            raise HTTPException(
+                status_code=429, 
+                detail=f"下载频率超限，每分钟最多{settings.DOWNLOAD_RATE_LIMIT_PER_MINUTE}次，请稍后重试"
+            )
+        
+        # 检查并发限制
+        if not download_manager.increment_concurrent(user_ip):
+            raise HTTPException(
+                status_code=429,
+                detail=f"并发下载数超限，最多同时{settings.MAX_CONCURRENT_DOWNLOADS}个下载"
+            )
+        
         # 验证参数
         if not request.url or not request.url.strip():
+            download_manager.decrement_concurrent(user_ip)
             raise HTTPException(status_code=400, detail="视频链接不能为空")
         
         if not request.format_id:
+            download_manager.decrement_concurrent(user_ip)
             raise HTTPException(status_code=400, detail="请选择视频格式")
+        
+        # 检查存储空间
+        storage_stats = download_manager.get_storage_stats()
+        if storage_stats["usage_percent"] > 90:
+            # 自动清理
+            cleanup_result = download_manager.auto_cleanup()
+            print(f"🧹 自动清理完成: {cleanup_result}")
         
         # 下载视频
         result = video_downloader.download_video(request.url, request.format_id)
+        
+        # 下载完成，减少并发计数
+        download_manager.decrement_concurrent(user_ip)
         
         # 生成下载URL
         filename = result["filename"]
@@ -90,8 +121,13 @@ async def download_video(request: VideoDownloadRequest, background_tasks: Backgr
             }
         }
     except ValueError as e:
+        download_manager.decrement_concurrent(user_ip)
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        download_manager.decrement_concurrent(user_ip)
+        raise
     except Exception as e:
+        download_manager.decrement_concurrent(user_ip)
         raise HTTPException(status_code=500, detail=f"下载失败: {str(e)}")
 
 
@@ -255,6 +291,38 @@ async def delete_file(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+
+@router.get("/storage-stats")
+async def get_storage_stats():
+    """
+    获取存储空间统计信息
+    """
+    try:
+        stats = download_manager.get_storage_stats()
+        return {
+            "code": 200,
+            "message": "成功",
+            "data": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取存储统计失败: {str(e)}")
+
+
+@router.post("/cleanup")
+async def cleanup_files():
+    """
+    手动清理过期文件
+    """
+    try:
+        result = download_manager.auto_cleanup()
+        return {
+            "code": 200,
+            "message": "清理完成",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清理失败: {str(e)}")
 
 
 # 需要导入FileResponse

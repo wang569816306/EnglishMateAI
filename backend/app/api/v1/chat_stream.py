@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse  # 关键
 from sqlalchemy.orm import Session
 from app.schemas.chat import ChatRequest
-from app.agents.chat_agent_stream import chat_agent_stream
+from app.agents.chat_agent_stream import chat_agent_stream, chat_agent_stream_with_tools
 from app.auth.jwt_auth import get_current_user
 from app.core.database import get_db
 from app.models.user import Session as SessionModel, Message as MessageModel
@@ -75,9 +75,16 @@ async def ai_chat_stream(
         db.add(user_message)
         db.commit()
     
+    # 根据 use_tools 参数选择 Agent
+    if request.use_tools:
+        print('🔧 [Stream Tool Calling]', session_id, 'User:', current_user['username'])
+        agent_func = chat_agent_stream_with_tools
+    else:
+        agent_func = chat_agent_stream
+    
     # 直接返回流式响应
     return StreamingResponse(
-        chat_agent_stream(request.question, session_id, db, db_session.id if db_session else None),
+        agent_func(request.question, session_id, db, db_session.id if db_session else None),
         media_type="text/event-stream",  # 必须改这个！
         headers={
             "Cache-Control": "no-cache",  # 禁止缓存
@@ -86,3 +93,4 @@ async def ai_chat_stream(
             "X-Session-Id": session_id,  # 返回会话ID
         }
     )
+
