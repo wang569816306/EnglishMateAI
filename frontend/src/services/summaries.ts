@@ -6,29 +6,21 @@ export interface SummarizeRequest {
   language?: string
 }
 
-export interface MindmapNode {
-  content: string
-  children?: MindmapNode[]
-}
-
-export interface MindmapData {
-  title: string
-  root: MindmapNode
-}
-
 // 流式总结（SSE）
 export async function summarizeVideoStream(
   request: SummarizeRequest,
   onChunk: (chunk: string) => void,
-  onMindmap: (data: MindmapData) => void,
   onComplete: () => void,
   onError: (error: Error) => void
 ) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/ai/summaries/summarize`, {
+    // 使用 apiClient 的 baseURL，避免重复 /ai/ 前缀
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/ai'
+    const response = await fetch(`${baseURL}/summaries/summarize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
       },
       body: JSON.stringify(request)
     })
@@ -47,15 +39,18 @@ export async function summarizeVideoStream(
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.slice(6))
-          
-          if (data.type === 'chunk') {
-            onChunk(data.content)
-          } else if (data.type === 'mindmap') {
-            onMindmap(data.data)
-          } else if (data.status === 'completed') {
-            onComplete()
-            return
+          try {
+            const data = JSON.parse(line.slice(6))
+            
+            if (data.type === 'chunk') {
+              onChunk(data.content)
+            } else if (data.status === 'completed') {
+              console.log('✅ 总结完成')
+              onComplete()
+              return
+            }
+          } catch (parseError) {
+            console.error('解析SSE数据失败:', line, parseError)
           }
         }
       }
@@ -63,11 +58,6 @@ export async function summarizeVideoStream(
   } catch (error) {
     onError(error as Error)
   }
-}
-
-// 生成思维导图
-export async function generateMindmap(request: SummarizeRequest): Promise<{ mindmap: MindmapData }> {
-  return await api.post('/ai/summaries/generate-mindmap', request)
 }
 
 // AI 视频内容问答
@@ -83,6 +73,6 @@ export interface AnswerResponse {
 }
 
 export async function askQuestion(request: QuestionRequest): Promise<AnswerResponse> {
-  const response = await api.post('/ai/summaries/ask-question', request)
+  const response = await api.post('/summaries/ask-question', request)
   return response.data
 }

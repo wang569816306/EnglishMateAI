@@ -94,11 +94,13 @@ export async function getDirectUrl(url: string, formatId: string): Promise<Direc
  * 返回文件blob和文件名
  */
 export async function proxyDownload(url: string, formatId: string): Promise<{ blob: Blob, filename: string }> {
+  // 使用统一的 baseURL
   const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/ai'
   const response = await fetch(`${baseURL}/videos/proxy-download`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('access_token')}`
     },
     body: JSON.stringify({ url, format_id: formatId })
   })
@@ -141,6 +143,6 @@ export async function deleteDownloadFile(filename: string): Promise<void> {
  * 获取文件下载URL
  */
 export function getFileDownloadUrl(filename: string): string {
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-  return `${baseURL}/api/v1/videos/file/${filename}`
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/ai'
+  return `${baseURL}/videos/file/${filename}`
 }

@@ -148,8 +148,9 @@
                 </a-button>
               </a-tab-pane>
 
-              <!-- 字幕文本 Tab -->
-              <a-tab-pane key="subtitles" tab=" 字幕文本">
+              <!-- 字幕文本 Tab (已隐藏) -->
+              <!--
+              <a-tab-pane key="subtitles" tab="📄 字幕文本">
                 <div class="tab-content">
                   <a-alert
                     message="提示"
@@ -176,29 +177,7 @@
                   </a-button>
                 </div>
               </a-tab-pane>
-
-              <!-- 思维导图 Tab -->
-              <a-tab-pane key="mindmap" tab="🧠 思维导图">
-                <div class="tab-content mindmap-container">
-                  <div v-if="!mindmapData" class="empty-state">
-                    <ApartmentOutlined style="font-size: 48px; color: #d9d9d9" />
-                    <p>思维导图将在总结完成后自动生成</p>
-                  </div>
-                  <div v-else ref="mindmapContainer" class="mindmap-view"></div>
-                </div>
-                <div v-if="mindmapData" class="mindmap-actions">
-                  <a-button @click="handleFullscreen">
-                    <FullscreenOutlined /> 全屏展示
-                  </a-button>
-                  <a-button @click="handleExportMindmap('png')">
-                    <DownloadOutlined /> 导出 PNG
-                  </a-button>
-                  <a-button @click="handleExportMindmap('svg')">
-                    <DownloadOutlined /> 导出 SVG
-                  </a-button>
-                </div>
-              </a-tab-pane>
-
+              -->
 
             </a-tabs>
           </a-card>
@@ -211,24 +190,11 @@
       <h2 class="section-title">AI 视频分析</h2>
       <VideoAnalysis :video-url="videoUrl" :video-info="videoInfo" />
     </section>
-
-
-
-    <!-- 全屏思维导图 -->
-    <a-modal
-      v-model:visible="fullscreenVisible"
-      title="思维导图 - 全屏模式"
-      width="95vw"
-      :footer="null"
-      @cancel="fullscreenVisible = false"
-    >
-      <div ref="fullscreenContainer" class="fullscreen-mindmap"></div>
-    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   LinkOutlined,
@@ -237,17 +203,12 @@ import {
   EyeOutlined,
   DownloadOutlined,
   CheckCircleFilled,
-  SoundOutlined,
   RobotOutlined,
-  ApartmentOutlined,
-  FullscreenOutlined,
   SettingOutlined
 } from '@ant-design/icons-vue'
 import { parseVideo, getDirectUrl, proxyDownload } from '@/services/video'
 import type { VideoInfo } from '@/services/video'
-import { summarizeVideoStream, generateMindmap, type MindmapData } from '@/services/summaries'
-import { Transformer } from 'markmap-lib'
-import { Markmap } from 'markmap-view'
+import { summarizeVideoStream } from '@/services/summaries'
 
 // 状态
 const videoUrl = ref('')
@@ -261,12 +222,6 @@ const subtitles = ref('')
 const activeTab = ref('summary')
 const summarizing = ref(false)
 const summary = ref('')
-const mindmapData = ref<MindmapData | null>(null)
-const fullscreenVisible = ref(false)
-
-// Refs
-const mindmapContainer = ref<HTMLElement | null>(null)
-const fullscreenContainer = ref<HTMLElement | null>(null)
 
 // 计算属性：是否可以解析
 const canParse = computed(() => {
@@ -435,25 +390,6 @@ function getSelectedLabel(): string {
   return fmt?.label || ''
 }
 
-// 渲染思维导图
-function renderMindmap() {
-  nextTick(() => {
-    if (!mindmapData.value || !mindmapContainer.value) return
-
-    const transformer = new Transformer()
-    const { root } = transformer.transform(mindmapData.value.root.content)
-    
-    // 添加子节点
-    if (mindmapData.value.root.children) {
-      mindmapData.value.root.children.forEach(child => {
-        root.children!.push(transformer.transform(child.content).root)
-      })
-    }
-
-    Markmap.create(mindmapContainer.value, undefined, root)
-  })
-}
-
 // AI 智能总结
 async function handleSummarize() {
   if (!videoInfo.value) {
@@ -463,7 +399,6 @@ async function handleSummarize() {
 
   summarizing.value = true
   summary.value = ''
-  mindmapData.value = null
 
   try {
     await summarizeVideoStream(
@@ -473,10 +408,6 @@ async function handleSummarize() {
       },
       (chunk) => {
         summary.value += chunk
-      },
-      (data) => {
-        mindmapData.value = data
-        renderMindmap()
       },
       () => {
         summarizing.value = false
@@ -490,72 +421,6 @@ async function handleSummarize() {
   } catch (error: any) {
     summarizing.value = false
     message.error('总结失败')
-  }
-}
-
-// 全屏展示
-async function handleFullscreen() {
-  fullscreenVisible.value = true
-  await nextTick()
-  
-  if (mindmapData.value && fullscreenContainer.value) {
-    const transformer = new Transformer()
-    const { root } = transformer.transform(mindmapData.value.root.content)
-    
-    if (mindmapData.value.root.children) {
-      mindmapData.value.root.children.forEach(child => {
-        root.children!.push(transformer.transform(child.content).root)
-      })
-    }
-
-    Markmap.create(fullscreenContainer.value, undefined, root)
-  }
-}
-
-// 导出思维导图
-async function handleExportMindmap(format: 'png' | 'svg') {
-  if (!mindmapData.value || !mindmapContainer.value) {
-    message.warning('请先生成思维导图')
-    return
-  }
-
-  try {
-    const svg = mindmapContainer.value.querySelector('svg')
-    if (!svg) {
-      message.error('导出失败')
-      return
-    }
-
-    if (format === 'svg') {
-      const svgData = new XMLSerializer().serializeToString(svg)
-      const blob = new Blob([svgData], { type: 'image/svg+xml' })
-      downloadBlob(blob, `mindmap-${videoInfo.value?.title}.svg`)
-      message.success('SVG 导出成功')
-    } else {
-      // PNG 导出
-      const canvas = document.createElement('canvas')
-      const svgData = new XMLSerializer().serializeToString(svg)
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml' })
-      const url = URL.createObjectURL(svgBlob)
-      
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext('2d')
-        ctx?.drawImage(img, 0, 0)
-        canvas.toBlob((blob) => {
-          if (blob) {
-            downloadBlob(blob, `mindmap-${videoInfo.value?.title}.png`)
-            message.success('PNG 导出成功')
-          }
-        })
-        URL.revokeObjectURL(url)
-      }
-      img.src = url
-    }
-  } catch (error) {
-    message.error('导出失败')
   }
 }
 
@@ -1043,29 +908,6 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   margin-top: 12px;
-}
-
-.mindmap-container {
-  min-height: 500px;
-  background: #fafafa;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.mindmap-view {
-  width: 100%;
-  height: 500px;
-}
-
-.mindmap-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.fullscreen-mindmap {
-  width: 100%;
-  height: 80vh;
 }
 
 /* Mobile Responsive */

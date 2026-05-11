@@ -4,9 +4,11 @@ from pydantic import BaseModel
 from openai import OpenAI
 import os
 import json
+import logging
 from app.settings import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # 初始化 OpenAI 客户端（兼容通义千问）
 client = OpenAI(
@@ -73,38 +75,6 @@ async def generate_summary_sse(title: str, subtitles: str, language: str = "zh")
                     full_content += content
                     yield f"data: {json.dumps({'type': 'chunk', 'content': content}, ensure_ascii=False)}\n\n"
 
-        # 根据总结内容生成思维导图数据
-        mindmap_data = {
-            "title": title,
-            "root": {
-                "content": title,
-                "children": [
-                    {
-                        "content": "核心主题",
-                        "children": [
-                            {"content": "主要讨论点"},
-                            {"content": "关键概念"}
-                        ]
-                    },
-                    {
-                        "content": "重要内容",
-                        "children": [
-                            {"content": "内容解析"},
-                            {"content": "关键要点"}
-                        ]
-                    },
-                    {
-                        "content": "结论",
-                        "children": [
-                            {"content": "主要观点"},
-                            {"content": "后续行动"}
-                        ]
-                    }
-                ]
-            }
-        }
-
-        yield f"data: {json.dumps({'type': 'mindmap', 'data': mindmap_data}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'status': 'completed', 'message': '总结完成'}, ensure_ascii=False)}\n\n"
         
     except Exception as e:
@@ -118,44 +88,6 @@ async def summarize_video(request: SummarizeRequest):
         generate_summary_sse(request.video_title, request.subtitles, request.language),
         media_type="text/event-stream"
     )
-
-
-@router.post("/generate-mindmap")
-async def generate_mindmap(request: SummarizeRequest):
-    """生成思维导图数据"""
-    # TODO: 使用AI生成更准确的思维导图
-    mindmap_data = {
-        "title": request.video_title,
-        "root": {
-            "content": request.video_title,
-            "children": [
-                {
-                    "content": "核心主题",
-                    "children": [
-                        {"content": "要点一"},
-                        {"content": "要点二"},
-                        {"content": "要点三"}
-                    ]
-                },
-                {
-                    "content": "详细内容",
-                    "children": [
-                        {"content": "详细说明1"},
-                        {"content": "详细说明2"}
-                    ]
-                },
-                {
-                    "content": "结论与建议",
-                    "children": [
-                        {"content": "总结观点"},
-                        {"content": "下一步行动"}
-                    ]
-                }
-            ]
-        }
-    }
-    
-    return {"mindmap": mindmap_data}
 
 
 class QuestionRequest(BaseModel):

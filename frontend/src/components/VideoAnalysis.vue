@@ -283,17 +283,26 @@ function renderMindmap() {
   nextTick(() => {
     if (!mindmapData.value || !mindmapContainer.value) return
 
-    const transformer = new Transformer()
-    const { root } = transformer.transform(mindmapData.value.root.content)
-    
-    // 添加子节点
-    if (mindmapData.value.root.children) {
-      mindmapData.value.root.children.forEach(child => {
-        root.children!.push(transformer.transform(child.content).root)
-      })
+    try {
+      // 清空容器
+      mindmapContainer.value.innerHTML = ''
+      
+      // 将后端数据转换为 Markmap 格式
+      const transformNode = (node: any): any => {
+        return {
+          content: node.content,
+          children: node.children ? node.children.map(transformNode) : []
+        }
+      }
+      
+      const markmapData = transformNode(mindmapData.value.root)
+      
+      // 创建思维导图
+      Markmap.create(mindmapContainer.value, undefined, markmapData)
+    } catch (error) {
+      console.error('思维导图渲染失败:', error)
+      message.error('思维导图渲染失败')
     }
-
-    Markmap.create(mindmapContainer.value, undefined, root)
   })
 }
 
@@ -303,16 +312,26 @@ async function handleFullscreen() {
   await nextTick()
   
   if (mindmapData.value && fullscreenContainer.value) {
-    const transformer = new Transformer()
-    const { root } = transformer.transform(mindmapData.value.root.content)
-    
-    if (mindmapData.value.root.children) {
-      mindmapData.value.root.children.forEach(child => {
-        root.children!.push(transformer.transform(child.content).root)
-      })
+    try {
+      // 清空容器
+      fullscreenContainer.value.innerHTML = ''
+      
+      // 将后端数据转换为 Markmap 格式
+      const transformNode = (node: any): any => {
+        return {
+          content: node.content,
+          children: node.children ? node.children.map(transformNode) : []
+        }
+      }
+      
+      const markmapData = transformNode(mindmapData.value.root)
+      
+      // 创建思维导图
+      Markmap.create(fullscreenContainer.value, undefined, markmapData)
+    } catch (error) {
+      console.error('全屏思维导图渲染失败:', error)
+      message.error('全屏思维导图渲染失败')
     }
-
-    Markmap.create(fullscreenContainer.value, undefined, root)
   }
 }
 
