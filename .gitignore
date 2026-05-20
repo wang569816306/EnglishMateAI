@@ -56,6 +56,9 @@ dist
 dist-ssr
 *.local
 
+# 后端静态文件
+backend/static/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -65,3 +68,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+

@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, inject, Ref, watch, computed } from 'vue'
+import { ref, nextTick, onMounted, inject, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../utils/api'
 import { 
