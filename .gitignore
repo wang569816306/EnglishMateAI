@@ -2,6 +2,11 @@
 .env
 !.env.example
 
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]
