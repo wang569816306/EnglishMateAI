@@ -57,7 +57,7 @@ dist-ssr
 *.local
 
 # 后端静态文件
-backend/static/
+# backend/static/
 
 # Editor directories and files
 .vscode/*
