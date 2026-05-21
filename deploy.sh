@@ -1,7 +1,7 @@
 #!/bin/bash
 ###############################################################################
 # EnglishMateAI 一键部署脚本
-# 适用于：Ubuntu 20.04/22.04, CentOS 7/8
+# 适用于：Ubuntu 20.04/22.04, CentOS 7/8, Alibaba Cloud Linux
 # 用法：bash deploy.sh [your-openai-api-key]
 ###############################################################################
 
@@ -19,6 +19,16 @@ PROJECT_DIR="/var/www/englishmate"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 API_KEY="${1:-}"
+PYTHON_CMD="python3"  # 默认 Python 命令
+
+# 检测系统用户（用于 systemd 服务）
+if id -u www-data &>/dev/null; then
+    SERVICE_USER="www-data"
+elif id -u nginx &>/dev/null; then
+    SERVICE_USER="nginx"
+else
+    SERVICE_USER="root"
+fi
 
 echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   🚀 EnglishMateAI 一键部署脚本        ║${NC}"
@@ -27,7 +37,7 @@ echo ""
 echo -e "${YELLOW}⚠️  重要提示：${NC}"
 echo -e "${YELLOW}   在运行此脚本前，请先手动构建前端代码并放到后端目录${NC}"
 echo -e "${YELLOW}   执行命令：${NC}"
-echo -e "${YELLOW}     cd frontend && npm run build${NC}"
+echo -e "${YELLOW}     cd frontend && npm install && npx vite build${NC}"
 echo -e "${YELLOW}     cp -r dist/* ../backend/static/${NC}"
 echo ""
 
@@ -52,7 +62,7 @@ fi
 ###############################################################################
 # 步骤 1: 安装系统依赖
 ###############################################################################
-echo -e "${GREEN}[1/7] 安装系统依赖...${NC}"
+echo -e "${GREEN}[1/9] 安装系统依赖...${NC}"
 
 # 检测操作系统
 if [ -f /etc/os-release ]; then
@@ -67,10 +77,83 @@ case $OS in
     ubuntu|debian)
         apt update -y
         apt install -y python3 python3-pip python3-venv nodejs npm nginx git openssl curl wget
+        # 确定使用的 Python 命令
+        if command -v python3.11 &>/dev/null; then
+            PYTHON_CMD="python3.11"
+        elif command -v python3.10 &>/dev/null; then
+            PYTHON_CMD="python3.10"
+        elif command -v python3.9 &>/dev/null; then
+            PYTHON_CMD="python3.9"
+        elif command -v python3.8 &>/dev/null; then
+            PYTHON_CMD="python3.8"
+        elif command -v python3 &>/dev/null; then
+            PYTHON_CMD="python3"
+        else
+            echo -e "${RED}❌ 未找到任何 Python 版本${NC}"
+            exit 1
+        fi
+        
+        # 检查 Python 版本
+        PYTHON_VERSION=$($PYTHON_CMD -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+        
+        echo -e "${GREEN}✅ 使用 Python $PYTHON_VERSION ($PYTHON_CMD)${NC}"
+        
+        if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 8 ]); then
+            echo -e "${RED}❌ Python $PYTHON_VERSION 版本太低，需要 3.8+${NC}"
+            echo -e "${YELLOW}请手动安装 Python 3.8 或更高版本${NC}"
+            exit 1
+        fi
         ;;
-    centos|rhel|fedora)
-        yum update -y
-        yum install -y python3 python3-pip python3-devel nodejs npm nginx git openssl curl wget
+    centos|rhel|fedora|alinux)
+        yum update -y --nogpgcheck
+        
+        # 先尝试安装高版本 Python
+        PYTHON_INSTALLED=false
+        for pyver in python3.11 python39 python38; do
+            if yum install -y $pyver $pyver-pip $pyver-devel --nogpgcheck 2>/dev/null; then
+                echo -e "${GREEN}✅ 已安装 $pyver${NC}"
+                PYTHON_INSTALLED=true
+                break
+            fi
+        done
+        
+        # 如果没安装到高版本，再安装默认 python3
+        if [ "$PYTHON_INSTALLED" = false ]; then
+            echo -e "${YELLOW}⚠️  未找到 Python 3.8+，安装默认 python3...${NC}"
+            yum install -y python3 python3-pip python3-devel --nogpgcheck
+        fi
+        
+        # 安装其他依赖
+        yum install -y nodejs npm nginx git openssl curl wget --nogpgcheck
+        
+        # 确定使用的 Python 命令
+        if command -v python3.11 &>/dev/null; then
+            PYTHON_CMD="python3.11"
+        elif command -v python3.9 &>/dev/null; then
+            PYTHON_CMD="python3.9"
+        elif command -v python3.8 &>/dev/null; then
+            PYTHON_CMD="python3.8"
+        elif command -v python3 &>/dev/null; then
+            PYTHON_CMD="python3"
+        else
+            echo -e "${RED}❌ 未找到任何 Python 版本${NC}"
+            exit 1
+        fi
+        
+        # 检查 Python 版本
+        PYTHON_VERSION=$($PYTHON_CMD -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+        
+        echo -e "${GREEN}✅ 使用 Python $PYTHON_VERSION ($PYTHON_CMD)${NC}"
+        
+        if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 8 ]); then
+            echo -e "${RED}❌ Python $PYTHON_VERSION 版本太低，需要 3.8+${NC}"
+            echo -e "${YELLOW}请手动安装 Python 3.8 或更高版本${NC}"
+            exit 1
+        fi
         ;;
     *)
         echo -e "${RED}❌ 不支持的操作系统: $OS${NC}"
@@ -84,10 +167,11 @@ echo ""
 ###############################################################################
 # 步骤 2: 创建项目目录并设置权限
 ###############################################################################
-echo -e "${GREEN}[1/5] 创建项目目录...${NC}"
+echo -e "${GREEN}[2/9] 创建项目目录...${NC}"
 
 mkdir -p $PROJECT_DIR
-chown -R $USER:$USER $PROJECT_DIR
+# 优先使用 SERVICE_USER，如果失败则使用当前用户
+chown -R $SERVICE_USER:$SERVICE_USER $PROJECT_DIR 2>/dev/null || chown -R $USER:$USER $PROJECT_DIR 2>/dev/null || true
 
 echo -e "${GREEN}✅ 项目目录创建完成${NC}"
 echo ""
@@ -95,12 +179,13 @@ echo ""
 ###############################################################################
 # 步骤 3: 配置后端环境
 ###############################################################################
-echo -e "${GREEN}[2/5] 配置后端环境...${NC}"
+echo -e "${GREEN}[3/9] 配置后端环境...${NC}"
 
 # 生成 JWT 密钥
 JWT_SECRET=$(openssl rand -hex 32)
 
-# 创建环境变量文件
+# 在后端目录创建环境变量文件
+cd $BACKEND_DIR
 cat > .env << EOF
 # OpenAI API 配置
 OPENAI_API_KEY=$API_KEY
@@ -135,27 +220,62 @@ echo ""
 ###############################################################################
 # 步骤 4: 安装 Python 依赖并初始化
 ###############################################################################
-echo -e "${GREEN}[3/5] 安装 Python 依赖并初始化数据库...${NC}"
+echo -e "${GREEN}[4/9] 安装 Python 依赖并初始化数据库...${NC}"
 
-# 创建虚拟环境
-python3 -m venv venv
+# 已在 backend 目录下
+
+# 删除旧的虚拟环境（如果存在）
+if [ -d "venv" ]; then
+    echo -e "${YELLOW}⚠️  检测到旧虚拟环境，正在清理...${NC}"
+    rm -rf venv
+fi
+
+# 创建虚拟环境（使用正确的 Python 版本）
+${PYTHON_CMD:-python3} -m venv venv
 source venv/bin/activate
 
-# 升级 pip
-pip install --upgrade pip --quiet
+# 升级 pip（使用国内镜像源，限速避免 IO 过载）
+pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 安装依赖
-pip install -r requirements.txt --quiet
-pip install gunicorn docx2txt --quiet
+# 安装依赖（使用国内镜像源加速，增加重试和超时避免 IO 过载）
+echo -e "${YELLOW}正在安装 Python 依赖，这可能需要较长时间...${NC}"
+echo -e "${YELLOW}提示：torch 包较大(900MB+)，请耐心等待${NC}"
+
+# 先安装小依赖包，最后安装 torch（减少瞬时 IO 压力）
+echo -e "${GREEN}步骤 1: 安装基础依赖...${NC}"
+pip install fastapi uvicorn starlette pydantic pydantic-settings python-dotenv httpx python-multipart \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple --retries 5 --timeout 300
+
+echo -e "${GREEN}步骤 2: 安装 LangChain 相关...${NC}"
+pip install langchain langchain-core langchain-community langchain-text-splitters \
+    langchain-openai langchain-chroma langchain-huggingface \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple --retries 5 --timeout 300
+
+echo -e "${GREEN}步骤 3: 安装向量数据库和 AI 模型...${NC}"
+pip install chromadb sentence-transformers transformers tokenizers huggingface-hub \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple --retries 5 --timeout 300
+
+echo -e "${GREEN}步骤 4: 安装 PyTorch (最大包，约 900MB)...${NC}"
+echo -e "${YELLOW}这一步最耗时，请耐心等待 30-60 分钟...${NC}"
+pip install torch -i https://pypi.tuna.tsinghua.edu.cn/simple --retries 5 --timeout 300
+
+echo -e "${GREEN}步骤 5: 安装其他依赖...${NC}"
+pip install redis numpy scikit-learn scipy tenacity tiktoken pyyaml requests \
+    PyJWT passlib python-jose sqlalchemy alembic psycopg2-binary aiosqlite \
+    python-docx openpyxl xlrd openai-whisper yt-dlp \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple --retries 5 --timeout 300
+
+echo -e "${GREEN}步骤 6: 安装部署工具...${NC}"
+pip install gunicorn docx2txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 初始化数据库
-python3 init_db.py
+$PYTHON_CMD init_db.py
 
 # 创建默认用户
-python3 create_default_user.py 2>/dev/null || echo "跳过用户创建"
+$PYTHON_CMD create_default_user.py 2>/dev/null || echo "跳过用户创建"
 
 # 初始化推荐问题
-python3 init_suggested_questions.py 2>/dev/null || echo "跳过推荐问题初始化"
+$PYTHON_CMD init_suggested_questions.py 2>/dev/null || echo "跳过推荐问题初始化"
 
 echo -e "${GREEN}✅ Python 环境配置完成${NC}"
 echo ""
@@ -163,10 +283,22 @@ echo ""
 ###############################################################################
 # 步骤 5: 配置 Nginx
 ###############################################################################
-echo -e "${GREEN}[4/5] 配置 Nginx...${NC}"
+echo -e "${GREEN}[5/9] 配置 Nginx...${NC}"
+
+# 检查 Nginx 配置目录
+if [ -d "/etc/nginx/conf.d" ]; then
+    NGINX_CONF_DIR="/etc/nginx/conf.d"
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/englishmate.conf"
+elif [ -d "/etc/nginx/sites-available" ]; then
+    NGINX_CONF_DIR="/etc/nginx/sites-available"
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/englishmate"
+else
+    echo -e "${RED}❌ 未找到 Nginx 配置目录${NC}"
+    exit 1
+fi
 
 # 创建 Nginx 配置文件
-cat > /etc/nginx/sites-available/englishmate << 'EOF'
+cat > $NGINX_CONF_FILE << 'EOF'
 server {
     listen 80;
     server_name _;
@@ -211,21 +343,23 @@ server {
 EOF
 
 # 启用站点
-ln -sf /etc/nginx/sites-available/englishmate /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+if [ "$NGINX_CONF_DIR" = "/etc/nginx/sites-available" ]; then
+    ln -sf $NGINX_CONF_FILE /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+fi
 
 # 测试并重启 Nginx
-nginx -t
-systemctl restart nginx
-systemctl enable nginx
+nginx -t && systemctl restart nginx && systemctl enable nginx || {
+    echo -e "${YELLOW}⚠️  Nginx 配置失败，请手动检查${NC}"
+}
 
 echo -e "${GREEN}✅ Nginx 配置完成${NC}"
 echo ""
 
 ###############################################################################
-# 步骤 8: 创建 systemd 服务
+# 步骤 6: 创建 systemd 服务
 ###############################################################################
-echo -e "${GREEN}创建系统服务...${NC}"
+echo -e "${GREEN}[6/9] 创建系统服务...${NC}"
 
 cat > /etc/systemd/system/englishmate-backend.service << EOF
 [Unit]
@@ -233,9 +367,9 @@ Description=EnglishMateAI Backend Service
 After=network.target
 
 [Service]
-Type=notify
-User=www-data
-Group=www-data
+Type=simple
+User=$SERVICE_USER
+Group=$SERVICE_USER
 WorkingDirectory=$BACKEND_DIR
 Environment=PATH=$BACKEND_DIR/venv/bin
 ExecStart=$BACKEND_DIR/venv/bin/gunicorn main:app \\
@@ -265,9 +399,9 @@ echo -e "${GREEN}✅ 系统服务创建完成${NC}"
 echo ""
 
 ###############################################################################
-# 步骤 9: 配置防火墙
+# 步骤 7: 配置防火墙
 ###############################################################################
-echo -e "${GREEN}配置防火墙...${NC}"
+echo -e "${GREEN}[7/9] 配置防火墙...${NC}"
 
 # Ubuntu UFW
 if command -v ufw &> /dev/null; then
@@ -287,9 +421,9 @@ fi
 echo ""
 
 ###############################################################################
-# 步骤 10: 创建备份脚本
+# 步骤 8: 创建备份脚本
 ###############################################################################
-echo -e "${GREEN}创建备份脚本...${NC}"
+echo -e "${GREEN}[8/9] 创建备份脚本...${NC}"
 
 mkdir -p /backup/englishmate
 
@@ -314,6 +448,36 @@ chmod +x /usr/local/bin/englishmate-backup.sh
 (crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/englishmate-backup.sh >> /var/log/englishmate-backup.log 2>&1") | crontab -
 
 echo -e "${GREEN}✅ 备份脚本创建完成${NC}"
+echo ""
+
+###############################################################################
+# 步骤 9: 验证部署
+###############################################################################
+echo -e "${GREEN}[9/9] 验证部署...${NC}"
+
+# 等待服务启动
+sleep 5
+
+# 检查服务状态
+if systemctl is-active --quiet englishmate-backend; then
+    echo -e "${GREEN}✅ 后端服务运行正常${NC}"
+else
+    echo -e "${RED}❌ 后端服务启动失败，请检查日志: journalctl -u englishmate-backend -f${NC}"
+fi
+
+if systemctl is-active --quiet nginx; then
+    echo -e "${GREEN}✅ Nginx 服务运行正常${NC}"
+else
+    echo -e "${RED}❌ Nginx 服务启动失败${NC}"
+fi
+
+# 测试 API 连接
+if curl -s http://localhost:8000/api/v1/health > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ API 健康检查通过${NC}"
+else
+    echo -e "${YELLOW}⚠️  API 健康检查失败，可能需要更多时间启动${NC}"
+fi
+
 echo ""
 
 ###############################################################################
