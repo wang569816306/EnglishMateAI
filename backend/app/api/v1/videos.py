@@ -178,8 +178,13 @@ async def proxy_download(request: VideoDirectUrlRequest):
         if 'bilibili.com' in request.url or 'b23.tv' in request.url:
             # 如果format_id包含+或者是best相关，保持原样
             if '+' not in format_id and 'best' not in format_id:
-                # 对于B站，优先使用合并格式
-                format_id = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+                # 对于B站，优先使用合并格式（但需ffmpeg支持）
+                # 检查ffmpeg是否可用
+                if video_downloader.has_ffmpeg:
+                    format_id = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+                else:
+                    # 无ffmpeg时无法合并，直接使用单流格式
+                    format_id = "best[ext=mp4]/best"
         
         # 使用yt-dlp下载视频
         result = video_downloader.download_video(request.url, format_id)

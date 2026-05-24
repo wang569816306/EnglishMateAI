@@ -221,19 +221,14 @@ const handleLogin = async () => {
     }
   } catch (error: any) {
     console.error('Login failed:', error)
-    console.error('Error details:', {
-      message: error.message,
-      response: error.response,
-      stack: error.stack
-    })
     
     // 针对不同错误类型给出更友好的提示
     let errorMsg = '登录失败，请检查用户名和密码'
     
-    if (error.message?.includes('Network Error')) {
+    if (error.response?.status === 401 || error.isLoginError) {
+      errorMsg = '密码错误，请重新输入'
+    } else if (error.message?.includes('Network Error')) {
       errorMsg = '网络连接失败，请检查网络后重试'
-    } else if (error.message?.includes('401')) {
-      errorMsg = '用户名或密码错误'
     } else if (error.message?.includes('timeout')) {
       errorMsg = '请求超时，请检查网络连接'
     } else if (error.message) {

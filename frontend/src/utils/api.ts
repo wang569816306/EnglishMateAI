@@ -44,7 +44,14 @@ apiClient.interceptors.response.use(
     
     // 处理401未授权
     if (error.response && error.response.status === 401) {
-      // Token过期或无效，清除登录状态
+      const isLoginRequest = error.config?.url?.includes('/auth/login')
+      
+      if (isLoginRequest) {
+        // 登录接口 401 = 密码错误，直接抛出，由调用方处理
+        return Promise.reject(Object.assign(error, { isLoginError: true }))
+      }
+      
+      // 其他接口 401 = Token过期或无效，清除登录状态
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user_info')

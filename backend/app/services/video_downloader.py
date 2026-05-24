@@ -236,9 +236,12 @@ class VideoDownloader:
                 'preferedformat': 'mp4',
             }]
         else:
-            # 如果没有ffmpeg，优先选择mp4格式
-            if '+' not in format_id:
-                ydl_opts["format"] = f"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+            # 如果没有ffmpeg，无法合并视频+音频，强制使用单流格式
+            format_id_clean = format_id.split('+')[0] if '+' in format_id else format_id
+            ydl_opts["format"] = format_id_clean
+            # 如果清理后的 format_id 不是 best 类语法，用 fallback 兜底
+            if 'best' not in format_id_clean.lower():
+                ydl_opts["format"] = "best[ext=mp4]/best"
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

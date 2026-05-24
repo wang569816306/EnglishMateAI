@@ -195,7 +195,9 @@ async def chat_agent_stream(question: str, session_id: str = "default", db: Sess
         yield "data: [DONE]\n\n"
     except Exception as e:
         logger.error(f"流式聊天请求处理失败: {str(e)}")
-        raise
+        # 以 SSE 格式返回错误信息，避免客户端无响应
+        yield f"data: [ERROR]{str(e)}\n\n"
+        yield "data: [DONE]\n\n"
 
 
 # ==================== 支持 Tool Calling 的流式 Agent ====================
